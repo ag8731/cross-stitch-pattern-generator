@@ -67,50 +67,89 @@ export class PatternExporter {
     const cellSize = 10; // Smaller for PDF
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 20;
     
-    // Add title
+    // Add title page
     pdf.setFontSize(16);
-    pdf.text(pattern.title || 'Cross Stitch Pattern', 20, 20);
+    pdf.text(pattern.title || 'Cross Stitch Pattern', margin, 20);
     
     // Add pattern info
     pdf.setFontSize(10);
-    pdf.text(`Size: ${pattern.width} x ${pattern.height} stitches`, 20, 30);
-    pdf.text(`Cloth count: ${pattern.clothCount}`, 20, 37);
-    pdf.text(`Colors: ${pattern.colors.length}`, 20, 44);
+    pdf.text(`Size: ${pattern.width} x ${pattern.height} stitches`, margin, 30);
+    pdf.text(`Cloth count: ${pattern.clothCount}`, margin, 37);
+    pdf.text(`Colors: ${pattern.colors.length}`, margin, 44);
 
-    // Calculate if pattern fits on one page
-    const patternWidth = pattern.width * cellSize;
-    const patternHeight = pattern.height * cellSize;
+    // Calculate available area for pattern on each page
+    const availableWidth = pageWidth - margin * 2;
+    const availableHeight = pageHeight - margin * 2;
     
-    if (patternWidth <= pageWidth - 40 && patternHeight <= pageHeight - 80) {
-      // Draw pattern on single page
-      this.drawPatternOnPDF(pdf, pattern, 20, 60, cellSize);
-    } else {
-      // Split across multiple pages
-      pdf.addPage();
-      this.drawPatternOnPDF(pdf, pattern, 20, 20, cellSize);
+    // Calculate how many cells fit per page
+    const cellsPerPageX = Math.floor(availableWidth / cellSize);
+    const cellsPerPageY = Math.floor(availableHeight / cellSize);
+    
+    // Calculate how many pages needed
+    const pagesX = Math.ceil(pattern.width / cellsPerPageX);
+    const pagesY = Math.ceil(pattern.height / cellsPerPageY);
+    
+    // Draw pattern pages
+    for (let pageY = 0; pageY < pagesY; pageY++) {
+      for (let pageX = 0; pageX < pagesX; pageX++) {
+        pdf.addPage();
+        
+        // Add page header with coordinates
+        pdf.setFontSize(10);
+        pdf.setTextColor('#000000');
+        pdf.text(
+          `Pattern section (${pageX + 1}, ${pageY + 1}) of (${pagesX}, ${pagesY})`,
+          margin,
+          margin - 5
+        );
+        
+        // Calculate which cells to draw on this page
+        const startCellX = pageX * cellsPerPageX;
+        const startCellY = pageY * cellsPerPageY;
+        const endCellX = Math.min(startCellX + cellsPerPageX, pattern.width);
+        const endCellY = Math.min(startCellY + cellsPerPageY, pattern.height);
+        
+        // Draw cells for this page section
+        this.drawPatternSectionOnPDF(
+          pdf,
+          pattern,
+          margin,
+          margin,
+          cellSize,
+          startCellX,
+          startCellY,
+          endCellX,
+          endCellY
+        );
+      }
     }
 
     // Add color legend on new page
     pdf.addPage();
-    this.drawColorLegendOnPDF(pdf, pattern, 20, 20);
+    this.drawColorLegendOnPDF(pdf, pattern, margin, 20);
 
     // Download PDF
     pdf.save(`${pattern.title || 'pattern'}.pdf`);
   }
 
-  private static drawPatternOnPDF(
+  private static drawPatternSectionOnPDF(
     pdf: jsPDF,
     pattern: CrossStitchPattern,
     startX: number,
     startY: number,
-    cellSize: number
+    cellSize: number,
+    startCellX: number,
+    startCellY: number,
+    endCellX: number,
+    endCellY: number
   ): void {
-    for (let y = 0; y < pattern.height; y++) {
-      for (let x = 0; x < pattern.width; x++) {
+    for (let y = startCellY; y < endCellY; y++) {
+      for (let x = startCellX; x < endCellX; x++) {
         const cell = pattern.cells[y][x];
-        const xPos = startX + x * cellSize;
-        const yPos = startY + y * cellSize;
+        const xPos = startX + (x - startCellX) * cellSize;
+        const yPos = startY + (y - startCellY) * cellSize;
 
         // Draw cell background
         if (cell.color) {
