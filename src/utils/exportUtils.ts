@@ -5,13 +5,18 @@ export class PatternExporter {
   static exportAsImage(pattern: CrossStitchPattern, cellSize: number = 20): void {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d')!;
+    const labelMargin = cellSize * 1.5;
     
-    canvas.width = pattern.width * cellSize;
-    canvas.height = pattern.height * cellSize;
+    canvas.width = pattern.width * cellSize + labelMargin;
+    canvas.height = pattern.height * cellSize + labelMargin;
 
     // Draw white background
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Offset drawing by label margin
+    ctx.save();
+    ctx.translate(labelMargin, labelMargin);
 
     // Draw pattern
     for (let y = 0; y < pattern.height; y++) {
@@ -37,9 +42,9 @@ export class PatternExporter {
       }
     }
 
-    // Draw grid
-    ctx.strokeStyle = '#E5E7EB';
-    ctx.lineWidth = 1;
+    // Draw regular grid lines
+    ctx.strokeStyle = '#F0A0C0';
+    ctx.lineWidth = 0.5;
     
     for (let x = 0; x <= pattern.width; x++) {
       ctx.beginPath();
@@ -53,6 +58,44 @@ export class PatternExporter {
       ctx.moveTo(0, y * cellSize);
       ctx.lineTo(pattern.width * cellSize, y * cellSize);
       ctx.stroke();
+    }
+
+    // Draw bold lines every 10 cells
+    ctx.strokeStyle = '#3B3B9A';
+    ctx.lineWidth = 1.5;
+
+    for (let x = 0; x <= pattern.width; x += 10) {
+      ctx.beginPath();
+      ctx.moveTo(x * cellSize, 0);
+      ctx.lineTo(x * cellSize, pattern.height * cellSize);
+      ctx.stroke();
+    }
+
+    for (let y = 0; y <= pattern.height; y += 10) {
+      ctx.beginPath();
+      ctx.moveTo(0, y * cellSize);
+      ctx.lineTo(pattern.width * cellSize, y * cellSize);
+      ctx.stroke();
+    }
+
+    ctx.restore();
+
+    // Draw grid count labels
+    ctx.fillStyle = '#6B7280';
+    ctx.font = `${Math.max(10, cellSize * 0.55)}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+
+    // Column labels along the top
+    for (let x = 0; x <= pattern.width; x += 10) {
+      ctx.fillText(String(x), labelMargin + x * cellSize, labelMargin - 4);
+    }
+
+    // Row labels along the left
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    for (let y = 0; y <= pattern.height; y += 10) {
+      ctx.fillText(String(y), labelMargin - 4, labelMargin + y * cellSize);
     }
 
     // Download image
@@ -145,11 +188,17 @@ export class PatternExporter {
     endCellX: number,
     endCellY: number
   ): void {
+    const labelMargin = cellSize * 1.5;
+    const gridStartX = startX + labelMargin;
+    const gridStartY = startY + labelMargin;
+    const sectionWidth = endCellX - startCellX;
+    const sectionHeight = endCellY - startCellY;
+
     for (let y = startCellY; y < endCellY; y++) {
       for (let x = startCellX; x < endCellX; x++) {
         const cell = pattern.cells[y][x];
-        const xPos = startX + (x - startCellX) * cellSize;
-        const yPos = startY + (y - startCellY) * cellSize;
+        const xPos = gridStartX + (x - startCellX) * cellSize;
+        const yPos = gridStartY + (y - startCellY) * cellSize;
 
         // Draw cell background
         if (cell.color) {
@@ -164,9 +213,46 @@ export class PatternExporter {
           pdf.text(cell.symbol, xPos + cellSize / 2, yPos + cellSize / 2 + 2, { align: 'center' });
         }
 
-        // Draw grid
-        pdf.setDrawColor('#E5E7EB');
+        // Draw regular grid
+        pdf.setDrawColor('#F0A0C0');
+        pdf.setLineWidth(0.1);
         pdf.rect(xPos, yPos, cellSize, cellSize);
+      }
+    }
+
+    // Draw bold lines every 10 cells
+    pdf.setDrawColor('#3B3B9A');
+    pdf.setLineWidth(0.4);
+
+    for (let x = startCellX; x <= endCellX; x++) {
+      if (x % 10 === 0) {
+        const xPos = gridStartX + (x - startCellX) * cellSize;
+        pdf.line(xPos, gridStartY, xPos, gridStartY + sectionHeight * cellSize);
+      }
+    }
+
+    for (let y = startCellY; y <= endCellY; y++) {
+      if (y % 10 === 0) {
+        const yPos = gridStartY + (y - startCellY) * cellSize;
+        pdf.line(gridStartX, yPos, gridStartX + sectionWidth * cellSize, yPos);
+      }
+    }
+
+    // Draw grid count labels
+    pdf.setTextColor('#6B7280');
+    pdf.setFontSize(7);
+
+    // Column labels along the top
+    for (let x = startCellX; x <= endCellX; x++) {
+      if (x % 10 === 0) {
+        pdf.text(String(x), gridStartX + (x - startCellX) * cellSize, gridStartY - 2, { align: 'center' });
+      }
+    }
+
+    // Row labels along the left
+    for (let y = startCellY; y <= endCellY; y++) {
+      if (y % 10 === 0) {
+        pdf.text(String(y), gridStartX - 2, gridStartY + (y - startCellY) * cellSize + 1, { align: 'right' });
       }
     }
   }

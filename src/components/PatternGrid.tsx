@@ -38,13 +38,18 @@ export default function PatternGrid({
     if (!ctx) return;
 
     const { width, height, cells } = pattern;
+    const labelMargin = cellSize * 1.5; // margin for row/column labels
 
-    canvas.width = width * cellSize;
-    canvas.height = height * cellSize;
+    canvas.width = width * cellSize + labelMargin;
+    canvas.height = height * cellSize + labelMargin;
 
     // Clear canvas
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Offset all drawing by labelMargin
+    ctx.save();
+    ctx.translate(labelMargin, labelMargin);
 
     // Draw cells
     for (let y = 0; y < height; y++) {
@@ -79,8 +84,9 @@ export default function PatternGrid({
 
     // Draw grid
     if (showGrid) {
-      ctx.strokeStyle = '#E5E7EB';
-      ctx.lineWidth = 1;
+      // Draw regular grid lines
+      ctx.strokeStyle = '#F0A0C0';
+      ctx.lineWidth = 0.5;
       
       for (let x = 0; x <= width; x++) {
         ctx.beginPath();
@@ -95,6 +101,46 @@ export default function PatternGrid({
         ctx.lineTo(width * cellSize, y * cellSize);
         ctx.stroke();
       }
+
+      // Draw bold lines every 10 cells
+      ctx.strokeStyle = '#3B3B9A';
+      ctx.lineWidth = 1.5;
+
+      for (let x = 0; x <= width; x += 10) {
+        ctx.beginPath();
+        ctx.moveTo(x * cellSize, 0);
+        ctx.lineTo(x * cellSize, height * cellSize);
+        ctx.stroke();
+      }
+
+      for (let y = 0; y <= height; y += 10) {
+        ctx.beginPath();
+        ctx.moveTo(0, y * cellSize);
+        ctx.lineTo(width * cellSize, y * cellSize);
+        ctx.stroke();
+      }
+    }
+
+    ctx.restore();
+
+    // Draw grid count labels
+    if (showGrid) {
+      ctx.fillStyle = '#6B7280';
+      ctx.font = `${Math.max(10, cellSize * 0.55)}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+
+      // Column labels along the top
+      for (let x = 0; x <= width; x += 10) {
+        ctx.fillText(String(x), labelMargin + x * cellSize, labelMargin - 4);
+      }
+
+      // Row labels along the left
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      for (let y = 0; y <= height; y += 10) {
+        ctx.fillText(String(y), labelMargin - 4, labelMargin + y * cellSize);
+      }
     }
   };
 
@@ -103,8 +149,9 @@ export default function PatternGrid({
     if (!canvas) return null;
 
     const rect = canvas.getBoundingClientRect();
-    const x = Math.floor((e.clientX - rect.left) / cellSize);
-    const y = Math.floor((e.clientY - rect.top) / cellSize);
+    const labelMargin = cellSize * 1.5;
+    const x = Math.floor((e.clientX - rect.left - labelMargin) / cellSize);
+    const y = Math.floor((e.clientY - rect.top - labelMargin) / cellSize);
 
     if (x >= 0 && x < pattern.width && y >= 0 && y < pattern.height) {
       return { x, y };
@@ -202,11 +249,17 @@ export default function PatternGrid({
     setIsDrawing(false);
   };
 
+  const labelMargin = cellSize * 1.5;
+  const canvasWidth = pattern.width * cellSize + labelMargin;
+  const canvasHeight = pattern.height * cellSize + labelMargin;
+
   return (
-    <div className="overflow-auto border border-gray-300 rounded-lg">
+    <div className="overflow-auto border border-gray-300 rounded-lg" style={{ maxHeight: '70vh' }}>
       <canvas
         ref={canvasRef}
-        className="cursor-crosshair"
+        width={canvasWidth}
+        height={canvasHeight}
+        className="cursor-crosshair block"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
