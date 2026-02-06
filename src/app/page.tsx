@@ -35,7 +35,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <h1 className="text-2xl font-bold text-gray-900">
-              Cross Stitch Pattern Generator
+             Katia's Cross Stitch Pattern Generator
             </h1>
             <div className="text-sm text-gray-500">
               Create beautiful cross stitch patterns from images
