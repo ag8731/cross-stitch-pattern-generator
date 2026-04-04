@@ -1,5 +1,6 @@
 'use client';
 
+import { useCallback } from 'react';
 import { PatternSettings } from '@/types/pattern';
 
 interface PatternSettingsProps {
@@ -21,6 +22,40 @@ export default function PatternSettingsComponent({
     onSettingsChange({ ...settings, [key]: value });
   };
 
+  const handleWidthChange = useCallback(
+    (newWidth: number) => {
+      if (settings.lockAspectRatio && settings.sourceAspectRatio) {
+        const newHeight = Math.max(10, Math.round(newWidth / settings.sourceAspectRatio));
+        onSettingsChange({ ...settings, width: newWidth, height: newHeight });
+      } else {
+        onSettingsChange({ ...settings, width: newWidth });
+      }
+    },
+    [settings, onSettingsChange]
+  );
+
+  const handleHeightChange = useCallback(
+    (newHeight: number) => {
+      if (settings.lockAspectRatio && settings.sourceAspectRatio) {
+        const newWidth = Math.max(10, Math.round(newHeight * settings.sourceAspectRatio));
+        onSettingsChange({ ...settings, width: newWidth, height: newHeight });
+      } else {
+        onSettingsChange({ ...settings, height: newHeight });
+      }
+    },
+    [settings, onSettingsChange]
+  );
+
+  const toggleAspectRatioLock = useCallback(() => {
+    const newLocked = !settings.lockAspectRatio;
+    if (newLocked && settings.sourceAspectRatio) {
+      const newHeight = Math.max(10, Math.round(settings.width / settings.sourceAspectRatio));
+      onSettingsChange({ ...settings, lockAspectRatio: newLocked, height: newHeight });
+    } else {
+      onSettingsChange({ ...settings, lockAspectRatio: newLocked });
+    }
+  }, [settings, onSettingsChange]);
+
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4 space-y-4">
       <h3 className="text-lg font-medium text-gray-900">Pattern Settings</h3>
@@ -36,9 +71,24 @@ export default function PatternSettingsComponent({
             min="10"
             max="500"
             value={settings.width}
-            onChange={(e) => updateSetting('width', parseInt(e.target.value) || 100)}
+            onChange={(e) => handleWidthChange(parseInt(e.target.value) || 100)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
+        </div>
+
+        {/* Aspect Ratio Lock */}
+        <div className="flex items-center justify-center">
+          <button
+            onClick={toggleAspectRatioLock}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+              settings.lockAspectRatio
+                ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                : 'bg-gray-50 text-gray-500 border border-gray-200'
+            }`}
+          >
+            <span>{settings.lockAspectRatio ? '🔗' : '🔓'}</span>
+            {settings.lockAspectRatio ? 'Aspect ratio locked' : 'Aspect ratio unlocked'}
+          </button>
         </div>
 
         {/* Height */}
@@ -51,7 +101,7 @@ export default function PatternSettingsComponent({
             min="10"
             max="500"
             value={settings.height}
-            onChange={(e) => updateSetting('height', parseInt(e.target.value) || 100)}
+            onChange={(e) => handleHeightChange(parseInt(e.target.value) || 100)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -92,18 +142,19 @@ export default function PatternSettingsComponent({
           </select>
         </div>
 
-        {/* Dithering */}
-        <div className="flex items-center space-x-3">
-          <input
-            type="checkbox"
-            id="dithering"
-            checked={settings.dithering}
-            onChange={(e) => updateSetting('dithering', e.target.checked)}
-            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-          />
-          <label htmlFor="dithering" className="text-sm font-medium text-gray-700">
-            Enable Dithering
+        {/* Dithering Method */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Dithering Method
           </label>
+          <select
+            value={settings.ditheringMethod}
+            onChange={(e) => updateSetting('ditheringMethod', e.target.value as PatternSettings['ditheringMethod'])}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="none">None</option>
+            <option value="floyd-steinberg">Floyd-Steinberg</option>
+          </select>
         </div>
 
         {/* Pattern Size Info */}

@@ -3,6 +3,7 @@ export interface DMCColor {
   name: string;
   hex: string;
   rgb: [number, number, number];
+  lab?: [number, number, number];
 }
 
 export interface PatternCell {
@@ -26,7 +27,9 @@ export interface PatternSettings {
   height: number;
   clothCount: number;
   maxColors: number;
-  dithering: boolean;
+  ditheringMethod: 'none' | 'floyd-steinberg';
+  lockAspectRatio: boolean;
+  sourceAspectRatio?: number;
 }
 
 export interface Tool {

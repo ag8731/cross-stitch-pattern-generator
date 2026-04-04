@@ -24,7 +24,8 @@ export default function Home() {
     height: 100,
     clothCount: 14,
     maxColors: 30,
-    dithering: false,
+    ditheringMethod: 'none',
+    lockAspectRatio: true,
   });
 
   const markStepCompleted = useCallback((step: number) => {
@@ -39,6 +40,15 @@ export default function Home() {
     (image: HTMLImageElement, _file: File) => {
       setUploadedImage(image);
       setImagePreview(image.src);
+
+      // Store source aspect ratio and compute initial dimensions
+      const aspectRatio = image.naturalWidth / image.naturalHeight;
+      setSettings((prev) => ({
+        ...prev,
+        sourceAspectRatio: aspectRatio,
+        height: Math.round(prev.width / aspectRatio),
+      }));
+
       markStepCompleted(1);
       setCurrentStep(2);
     },

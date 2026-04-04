@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback } from 'react';
 import { motion } from 'framer-motion';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -26,8 +26,6 @@ export default function SettingsStep({
   const clothCounts = [11, 14, 16, 18, 20, 22, 25, 28, 32];
   const maxColorsOptions = [10, 20, 30, 40, 50, 60, 80, 100];
 
-  const [ditheringEnabled, setDitheringEnabled] = useState(settings.dithering);
-
   const updateSetting = <K extends keyof PatternSettings>(
     key: K,
     value: PatternSettings[K]
@@ -35,11 +33,46 @@ export default function SettingsStep({
     onSettingsChange({ ...settings, [key]: value });
   };
 
-  const toggleDithering = () => {
-    const newValue = !ditheringEnabled;
-    setDitheringEnabled(newValue);
-    updateSetting('dithering', newValue);
-  };
+  /**
+   * Update width, and if aspect ratio is locked, auto-calculate height.
+   */
+  const handleWidthChange = useCallback(
+    (newWidth: number) => {
+      if (settings.lockAspectRatio && settings.sourceAspectRatio) {
+        const newHeight = Math.max(10, Math.round(newWidth / settings.sourceAspectRatio));
+        onSettingsChange({ ...settings, width: newWidth, height: newHeight });
+      } else {
+        onSettingsChange({ ...settings, width: newWidth });
+      }
+    },
+    [settings, onSettingsChange]
+  );
+
+  /**
+   * Update height, and if aspect ratio is locked, auto-calculate width.
+   */
+  const handleHeightChange = useCallback(
+    (newHeight: number) => {
+      if (settings.lockAspectRatio && settings.sourceAspectRatio) {
+        const newWidth = Math.max(10, Math.round(newHeight * settings.sourceAspectRatio));
+        onSettingsChange({ ...settings, width: newWidth, height: newHeight });
+      } else {
+        onSettingsChange({ ...settings, height: newHeight });
+      }
+    },
+    [settings, onSettingsChange]
+  );
+
+  const toggleAspectRatioLock = useCallback(() => {
+    const newLocked = !settings.lockAspectRatio;
+    if (newLocked && settings.sourceAspectRatio) {
+      // When locking, adjust height to match current width
+      const newHeight = Math.max(10, Math.round(settings.width / settings.sourceAspectRatio));
+      onSettingsChange({ ...settings, lockAspectRatio: newLocked, height: newHeight });
+    } else {
+      onSettingsChange({ ...settings, lockAspectRatio: newLocked });
+    }
+  }, [settings, onSettingsChange]);
 
   const widthCm = ((settings.width / settings.clothCount) * 2.54).toFixed(1);
   const heightCm = ((settings.height / settings.clothCount) * 2.54).toFixed(1);
@@ -108,7 +141,7 @@ export default function SettingsStep({
                   max="300"
                   value={settings.width}
                   onChange={(e) =>
-                    updateSetting('width', parseInt(e.target.value) || 100)
+                    handleWidthChange(parseInt(e.target.value) || 100)
                   }
                   className="flex-1"
                 />
@@ -118,11 +151,27 @@ export default function SettingsStep({
                   max="500"
                   value={settings.width}
                   onChange={(e) =>
-                    updateSetting('width', parseInt(e.target.value) || 100)
+                    handleWidthChange(parseInt(e.target.value) || 100)
                   }
                   className="w-20 text-center"
                 />
               </div>
+            </div>
+
+            {/* Aspect Ratio Lock */}
+            <div className="flex items-center justify-center -my-2">
+              <button
+                onClick={toggleAspectRatioLock}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                  settings.lockAspectRatio
+                    ? 'bg-rose-light/20 text-rose-dark border border-rose-light'
+                    : 'bg-gray-100 text-warm-gray border border-gray-200'
+                }`}
+                title={settings.lockAspectRatio ? 'Aspect ratio locked' : 'Aspect ratio unlocked'}
+              >
+                <span>{settings.lockAspectRatio ? '🔗' : '🔓'}</span>
+                {settings.lockAspectRatio ? 'Aspect ratio locked' : 'Aspect ratio unlocked'}
+              </button>
             </div>
 
             {/* Height */}
@@ -137,7 +186,7 @@ export default function SettingsStep({
                   max="300"
                   value={settings.height}
                   onChange={(e) =>
-                    updateSetting('height', parseInt(e.target.value) || 100)
+                    handleHeightChange(parseInt(e.target.value) || 100)
                   }
                   className="flex-1"
                 />
@@ -147,7 +196,7 @@ export default function SettingsStep({
                   max="500"
                   value={settings.height}
                   onChange={(e) =>
-                    updateSetting('height', parseInt(e.target.value) || 100)
+                    handleHeightChange(parseInt(e.target.value) || 100)
                   }
                   className="w-20 text-center"
                 />
@@ -194,22 +243,36 @@ export default function SettingsStep({
               </select>
             </div>
 
-            {/* Dithering Toggle */}
-            <div className="flex items-center justify-between">
-              <div>
-                <label className="text-sm font-medium text-charcoal">
-                  Enable Dithering
-                </label>
-                <p className="text-xs text-warm-gray mt-0.5">
-                  Blends colors for smoother gradients
-                </p>
+            {/* Dithering Method */}
+            <div>
+              <label className="block text-sm font-medium text-charcoal mb-2">
+                Dithering Method
+              </label>
+              <p className="text-xs text-warm-gray mb-2">
+                Error-diffusion dithering blends colors for smoother gradients
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => updateSetting('ditheringMethod', 'none')}
+                  className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${
+                    settings.ditheringMethod === 'none'
+                      ? 'bg-charcoal text-white shadow-sm'
+                      : 'bg-gray-100 text-warm-gray hover:bg-gray-200'
+                  }`}
+                >
+                  None
+                </button>
+                <button
+                  onClick={() => updateSetting('ditheringMethod', 'floyd-steinberg')}
+                  className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${
+                    settings.ditheringMethod === 'floyd-steinberg'
+                      ? 'bg-charcoal text-white shadow-sm'
+                      : 'bg-gray-100 text-warm-gray hover:bg-gray-200'
+                  }`}
+                >
+                  Floyd-Steinberg
+                </button>
               </div>
-              <button
-                onClick={toggleDithering}
-                className={`toggle-switch ${ditheringEnabled ? 'active' : ''}`}
-                role="switch"
-                aria-checked={ditheringEnabled}
-              />
             </div>
 
             {/* Estimated Size Info */}
